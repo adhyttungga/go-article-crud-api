@@ -1,4 +1,4 @@
-## Go Artcle CRUD
+## Go Article CRUD
 
 This collection contains article requests API using GO language.
 
