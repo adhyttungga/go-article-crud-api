@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-crud-article/connection"
+	"go-crud-article/helpers"
 	"go-crud-article/structs"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -17,25 +17,38 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateArticle(w http.ResponseWriter, r *http.Request)  {
-	payloads, _ := ioutil.ReadAll(r.Body)
-
 	var article structs.Posts
-	article.Created_date = time.Now()
-	article.Updated_date = time.Now()
-	json.Unmarshal(payloads, &article)
+	article.Created_date = time.Now().UTC()
+	article.Updated_date = time.Now().UTC()
 
-	connection.DB.Create(&article)
+	errval := helpers.ValidatePayloadsArticle(&article, r)
+	err := map[string]interface{}{"validationError": errval}
 
-	res := structs.Result{Code: 200, Data: article, Message: "Success create article"}
-	result, err := json.Marshal(res)
+	if len(errval) != 0 {
+		res := structs.Result{Code: 400, Data: err, Message: "Bad Request"}
+		result, err := json.Marshal(res)
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(result)
+	} else {
+		connection.DB.Create(&article)
+	
+		res := structs.Result{Code: 200, Data: article, Message: "Success create article"}
+		result, err := json.Marshal(res)
+	
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(result)
 }
 
 func GetArticles(w http.ResponseWriter, r *http.Request)  {
@@ -86,26 +99,40 @@ func UpdateArticle(w http.ResponseWriter, r *http.Request)  {
 	vars := mux.Vars(r)
 	articleID := vars["id"]
 
-	payloads, _ := ioutil.ReadAll(r.Body)
-
 	var articleUpdates structs.Posts
-	articleUpdates.Updated_date = time.Now()
-	json.Unmarshal(payloads, &articleUpdates)
+	articleUpdates.Updated_date = time.Now().UTC()
 
 	var article structs.Posts
-	connection.DB.First(&article, articleID)
-	connection.DB.Model(&article).Updates(&articleUpdates)
+
+	errval := helpers.ValidatePayloadsArticle(&articleUpdates, r)
+	err := map[string]interface{}{"validationError": errval}
+
+	if len(errval) != 0 {
+		res := structs.Result{Code: 400, Data: err, Message: "Bad Request"}
+		result, err := json.Marshal(res)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(result)
+	} else {
+		connection.DB.First(&article, articleID)
+		connection.DB.Model(&article).Updates(&articleUpdates)
+		
+		res := structs.Result{Code: 200, Data: article, Message: "Success update article"}
+		result, err := json.Marshal(res)
 	
-	res := structs.Result{Code: 200, Data: article, Message: "Success update article"}
-	result, err := json.Marshal(res)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(result)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(result)
 }
 
 func DeleteArticle(w http.ResponseWriter, r *http.Request)  {
