@@ -18,9 +18,9 @@ func Connect()  {
 	
 	if Err != nil {
 		log.Println("Connection failed", Err)
-		} else {
-			log.Println("Server up and running")
-		}
+	} else {
+		log.Println("Server up and running")
+	}
 
 		DB.AutoMigrate(&structs.Posts{})
 }
