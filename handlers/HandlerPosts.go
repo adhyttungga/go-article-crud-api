@@ -22,33 +22,18 @@ func CreateArticle(w http.ResponseWriter, r *http.Request)  {
 	article.Updated_date = time.Now().UTC()
 
 	errval := helpers.ValidatePayloadsArticle(&article, r)
-	err := map[string]interface{}{"validationError": errval}
 
 	if len(errval) != 0 {
-		res := structs.Result{Code: 400, Data: err, Message: "Bad Request"}
-		result, err := json.Marshal(res)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(result)
-	} else {
-		connection.DB.Create(&article)
+		json.NewEncoder(w).Encode(structs.Result{Code: 400, Data: errval, Message: "Bad Request"})
+		return
+	} 
 	
-		res := structs.Result{Code: 200, Data: article, Message: "Success create article"}
-		result, err := json.Marshal(res)
-	
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(result)
+	if err := connection.DB.Create(&article).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
+	json.NewEncoder(w).Encode(structs.Result{Code: 200, Data: article, Message: "Success Create Article"})
 }
 
 func GetArticles(w http.ResponseWriter, r *http.Request)  {
@@ -58,22 +43,12 @@ func GetArticles(w http.ResponseWriter, r *http.Request)  {
 	
 	articles := []structs.Posts{}
 
-	connection.DB.
-	Limit(limit).
-	Offset(offset).
-	Order("updated_date").
-	Find(&articles)
-
-	res := structs.Result{Code: 200, Data: articles, Message: "Success get articles"}
-	results, err := json.Marshal(res)
-
-	if err != nil {
+	if err := connection.DB.Limit(limit).Offset(offset).Order("updated_date").Find(&articles).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+		return
+	} 
 	
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(results)
+	json.NewEncoder(w).Encode(structs.Result{Code: 200, Data: articles, Message: "Success Get Articles"})
 }
 
 func GetArticle(w http.ResponseWriter, r *http.Request)  {
@@ -81,18 +56,13 @@ func GetArticle(w http.ResponseWriter, r *http.Request)  {
 	articleID := vars["id"]
 
 	var article structs.Posts
-	connection.DB.First(&article, articleID)
 
-	res := structs.Result{Code: 200, Data: article, Message: "Success get article"}
-	result, err := json.Marshal(res)
-
-	if err != nil {
+	if err := connection.DB.First(&article, articleID).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+		return
+	} 
+	
+	json.NewEncoder(w).Encode(structs.Result{Code: 200, Data: article, Message: "Success Get Article"})
 }
 
 func UpdateArticle(w http.ResponseWriter, r *http.Request)  {
@@ -105,34 +75,23 @@ func UpdateArticle(w http.ResponseWriter, r *http.Request)  {
 	var article structs.Posts
 
 	errval := helpers.ValidatePayloadsArticle(&articleUpdates, r)
-	err := map[string]interface{}{"validationError": errval}
 
 	if len(errval) != 0 {
-		res := structs.Result{Code: 400, Data: err, Message: "Bad Request"}
-		result, err := json.Marshal(res)
+		json.NewEncoder(w).Encode(structs.Result{Code: 400, Data: errval, Message: "Bad Request"})
+		return
+	} 
 
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+	if err := connection.DB.First(&article, articleID).Error; err != nil {		
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} 
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(result)
-	} else {
-		connection.DB.First(&article, articleID)
-		connection.DB.Model(&article).Updates(&articleUpdates)
-		
-		res := structs.Result{Code: 200, Data: article, Message: "Success update article"}
-		result, err := json.Marshal(res)
-	
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(result)
-	}
+	if err := connection.DB.Model(&article).Update(&articleUpdates).Error; err != nil {		
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} 
+
+	json.NewEncoder(w).Encode(structs.Result{Code: 200, Data: articleUpdates, Message: "Success Update Articles"})
 }
 
 func DeleteArticle(w http.ResponseWriter, r *http.Request)  {
@@ -140,17 +99,16 @@ func DeleteArticle(w http.ResponseWriter, r *http.Request)  {
 	articleID := vars["id"]
 
 	var article structs.Posts
-	connection.DB.First(&article, articleID)
-	connection.DB.Delete(&article)
 
-	res := structs.Result{Code: 200, Message: "Success delete article"}
-	result, err := json.Marshal(res)
-
-	if err != nil {
+	if err := connection.DB.First(&article, articleID).Error; err != nil {		
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+		return
+	} 
+	
+	if err := connection.DB.Delete(&article).Error; err != nil {		
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} 
+	
+	json.NewEncoder(w).Encode(structs.Result{Code: 200, Message: "Success Delete Article"})
 }
